@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz z Fonia",
+        "description": "Podaj dane logowania do panelu moja.fonia.app.",
+        "data": {
+          "username": "Login / e-mail",
+          "password": "Hasło"
+        },
+        "data_description": {
+          "username": "Login używany w panelu Fonia.",
+          "password": "Hasło do konta Fonia."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ponowne uwierzytelnienie Fonia",
+        "description": "Dane uwierzytelniające Fonia wygasły lub zostały odrzucone.",
+        "data": {
+          "username": "Login / e-mail",
+          "password": "Hasło"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nieprawidłowy login lub hasło.",
+      "cannot_connect": "Nie można połączyć się z Fonia.",
+      "rate_limited": "Fonia chwilowo ogranicza liczbę żądań. Spróbuj ponownie później."
+    },
+    "abort": {
+      "already_configured": "To konto Fonia jest już skonfigurowane.",
+      "reauth_entry_not_found": "Nie znaleziono wpisu konfiguracji Fonia do ponownego uwierzytelnienia."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status numeru",
+        "state": {
+          "active": "Aktywna",
+          "inactive": "Nieaktywna",
+          "suspended": "Zawieszona",
+          "cancelled": "Anulowana",
+          "expired": "Wygasła",
+          "pending": "Oczekująca"
+        }
+      },
+      "data_remaining": {
+        "name": "Pozostały internet"
+      },
+      "data_total": {
+        "name": "Łączny pakiet internetu"
+      },
+      "data_used_percentage": {
+        "name": "Wykorzystanie internetu"
+      },
+      "next_payment": {
+        "name": "Następna płatność"
+      },
+      "renewal_price": {
+        "name": "Cena odnowienia"
+      },
+      "order_count": {
+        "name": "Liczba zamówień"
+      },
+      "cashback_balance": {
+        "name": "Saldo cashback"
+      },
+      "cashback_spendable": {
+        "name": "Dostępny cashback"
+      },
+      "cashback_transaction_count": {
+        "name": "Liczba transakcji cashback"
+      },
+      "site_alert_count": {
+        "name": "Liczba komunikatów Fonia"
+      },
+      "roaming_data_remaining": {
+        "name": "Pozostały internet w roamingu"
+      },
+      "roaming_data_total": {
+        "name": "Łączny pakiet internetu w roamingu"
+      },
+      "roaming_data_used_percentage": {
+        "name": "Wykorzystanie internetu w roamingu"
+      }
+    },
+    "button": {
+      "usage_sync": {
+        "name": "Synchronizuj zużycie"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ustawienia Fonia",
+        "description": "Dostosuj częstotliwość odświeżania i synchronizację zużycia.",
+        "data": {
+          "scan_interval": "Interwał odświeżania (minuty)",
+          "usage_sync_enabled": "Automatycznie synchronizuj zużycie danych"
+        }
+      }
+    }
+  }
+}

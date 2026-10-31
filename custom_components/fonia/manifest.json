@@ -1,0 +1,15 @@
+{
+  "domain": "fonia",
+  "name": "Fonia",
+  "codeowners": [
+    "@LukaszP2"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/LukaszP2/ha-fonia",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/LukaszP2/ha-fonia/issues",
+  "requirements": [],
+  "version": "0.5.4",
+  "homeassistant": "2026.9.0"
+}

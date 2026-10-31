@@ -1,0 +1,53 @@
+{
+  "entity": {
+    "sensor": {
+      "status": {
+        "default": "mdi:account-check"
+      },
+      "data_remaining": {
+        "default": "mdi:sim-outline"
+      },
+      "data_total": {
+        "default": "mdi:database"
+      },
+      "data_used_percentage": {
+        "default": "mdi:chart-donut"
+      },
+      "next_payment": {
+        "default": "mdi:calendar-clock"
+      },
+      "renewal_price": {
+        "default": "mdi:cash"
+      },
+      "order_count": {
+        "default": "mdi:clipboard-list-outline"
+      },
+      "cashback_balance": {
+        "default": "mdi:cash-plus"
+      },
+      "cashback_spendable": {
+        "default": "mdi:cash-fast"
+      },
+      "site_alert_count": {
+        "default": "mdi:message-alert-outline"
+      },
+      "cashback_transaction_count": {
+        "default": "mdi:cash-multiple"
+      },
+      "roaming_data_remaining": {
+        "default": "mdi:earth"
+      },
+      "roaming_data_total": {
+        "default": "mdi:database"
+      },
+      "roaming_data_used_percentage": {
+        "default": "mdi:chart-donut"
+      }
+    },
+    "button": {
+      "usage_sync": {
+        "default": "mdi:sync"
+      }
+    }
+  }
+}

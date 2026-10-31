@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Fonia",
+        "description": "Enter your credentials for moja.fonia.app.",
+        "data": {
+          "username": "Username / email",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "Username used on the Fonia website.",
+          "password": "Password for your Fonia account."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Fonia",
+        "description": "Fonia credentials have expired or were rejected.",
+        "data": {
+          "username": "Username / email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password.",
+      "cannot_connect": "Unable to connect to Fonia.",
+      "rate_limited": "Fonia is temporarily rate limiting requests. Try again later."
+    },
+    "abort": {
+      "already_configured": "This Fonia account is already configured.",
+      "reauth_entry_not_found": "The Fonia configuration entry could not be found."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Phone status",
+        "state": {
+          "active": "Active",
+          "inactive": "Inactive",
+          "suspended": "Suspended",
+          "cancelled": "Cancelled",
+          "expired": "Expired",
+          "pending": "Pending"
+        }
+      },
+      "data_remaining": {
+        "name": "Data remaining"
+      },
+      "data_total": {
+        "name": "Total data allowance"
+      },
+      "data_used_percentage": {
+        "name": "Data used"
+      },
+      "next_payment": {
+        "name": "Next payment"
+      },
+      "renewal_price": {
+        "name": "Renewal price"
+      },
+      "order_count": {
+        "name": "Order count"
+      },
+      "cashback_balance": {
+        "name": "Cashback balance"
+      },
+      "cashback_spendable": {
+        "name": "Available cashback"
+      },
+      "cashback_transaction_count": {
+        "name": "Cashback transaction count"
+      },
+      "site_alert_count": {
+        "name": "Fonia notification count"
+      },
+      "roaming_data_remaining": {
+        "name": "Roaming data remaining"
+      },
+      "roaming_data_total": {
+        "name": "Total roaming data allowance"
+      },
+      "roaming_data_used_percentage": {
+        "name": "Roaming data used"
+      }
+    },
+    "button": {
+      "usage_sync": {
+        "name": "Synchronize usage"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Fonia settings",
+        "description": "Adjust the refresh interval and usage synchronization.",
+        "data": {
+          "scan_interval": "Refresh interval (minutes)",
+          "usage_sync_enabled": "Automatically synchronize data usage"
+        }
+      }
+    }
+  }
+}
