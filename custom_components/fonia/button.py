@@ -27,7 +27,12 @@ class FoniaUsageSyncButton(CoordinatorEntity[FoniaCoordinator], ButtonEntity):
     def __init__(self, coordinator: FoniaCoordinator) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = "account_usage_sync"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, "account")}, name="Fonia", manufacturer="Fonia", model="Konto")
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, "account")},
+            name="Fonia",
+            manufacturer="Fonia",
+            model="Konto",
+        )
 
     async def async_press(self) -> None:
         """Synchronize usage and refresh data."""

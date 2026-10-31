@@ -29,7 +29,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: FoniaConfigEntry) -> boo
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
-    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, Platform.BUTTON])
+    await hass.config_entries.async_forward_entry_setups(
+        entry, [Platform.SENSOR, Platform.BUTTON]
+    )
     return True
 
 
@@ -40,4 +42,6 @@ async def _async_options_updated(hass: HomeAssistant, entry: FoniaConfigEntry) -
 
 async def async_unload_entry(hass: HomeAssistant, entry: FoniaConfigEntry) -> bool:
     """Unload Fonia config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, [Platform.SENSOR, Platform.BUTTON])
+    return await hass.config_entries.async_unload_platforms(
+        entry, [Platform.SENSOR, Platform.BUTTON]
+    )

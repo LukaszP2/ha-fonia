@@ -25,9 +25,15 @@ async def async_get_config_entry_diagnostics(
             "sims": sum(len(item.sims) for item in data.subscriptions),
             "cashback_available": data.cashback_balance is not None,
             "site_alerts": len(data.site_alerts),
-            "last_usage_sync": coordinator.last_usage_sync.isoformat() if coordinator.last_usage_sync else None,
-            "last_details_update": coordinator.last_details_update.isoformat() if coordinator.last_details_update else None,
-            "last_account_update": coordinator.last_account_update.isoformat() if coordinator.last_account_update else None,
+            "last_usage_sync": coordinator.last_usage_sync.isoformat()
+            if coordinator.last_usage_sync
+            else None,
+            "last_details_update": coordinator.last_details_update.isoformat()
+            if coordinator.last_details_update
+            else None,
+            "last_account_update": coordinator.last_account_update.isoformat()
+            if coordinator.last_account_update
+            else None,
             "last_update_success": coordinator.last_update_success,
             "scan_interval_seconds": int(coordinator.scan_interval.total_seconds()),
             "usage_sync_enabled": coordinator.usage_sync_enabled,

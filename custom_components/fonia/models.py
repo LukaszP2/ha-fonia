@@ -104,11 +104,15 @@ def normalize(raw: dict[str, Any]) -> Subscription:
                 uuid=str(item.get("uuid") or ""),
                 phone_number=item.get("phone_number"),
                 operator=item.get("operator") or sim_tariff.get("operator"),
-                status=str(item.get("status")).lower() if item.get("status") is not None else None,
+                status=str(item.get("status")).lower()
+                if item.get("status") is not None
+                else None,
                 tariff=sim_tariff.get("name_pl") or sim_tariff.get("name"),
                 data_remaining=_float(usage.get("data_remaining_gb")),
                 data_total=_float(usage.get("data_total_gb")),
-                roaming_data_remaining=_package_value(usage.get("packages"), "remaining_gb"),
+                roaming_data_remaining=_package_value(
+                    usage.get("packages"), "remaining_gb"
+                ),
                 roaming_data_total=_package_value(usage.get("packages"), "total_gb"),
                 packages=usage.get("packages") or [],
                 agreement_number=item.get("agreement_number"),
@@ -120,7 +124,9 @@ def normalize(raw: dict[str, Any]) -> Subscription:
     return Subscription(
         uuid=str(raw.get("uuid") or ""),
         public_reference=raw.get("public_reference"),
-        status=str(raw.get("status")).lower() if raw.get("status") is not None else None,
+        status=str(raw.get("status")).lower()
+        if raw.get("status") is not None
+        else None,
         operator=raw.get("operator"),
         billing_period=raw.get("billing_period"),
         renewal_price=_float(raw.get("renewal_effective_price")),

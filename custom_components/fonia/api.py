@@ -24,6 +24,7 @@ class FoniaRateLimitError(FoniaApiError):
 
 class FoniaApi:
     """Async client for the Fonia web API."""
+
     def __init__(self, session: ClientSession) -> None:
         self.session = session
         self.token: str | None = None
@@ -56,7 +57,9 @@ class FoniaApi:
                 try:
                     data = await response.json()
                 except (ContentTypeError, ValueError) as err:
-                    raise FoniaApiError("Fonia returned a non-JSON login response") from err
+                    raise FoniaApiError(
+                        "Fonia returned a non-JSON login response"
+                    ) from err
         except FoniaApiError:
             raise
         except (ClientError, TimeoutError) as err:
@@ -94,7 +97,9 @@ class FoniaApi:
                 try:
                     data = await response.json()
                 except (ContentTypeError, ValueError) as err:
-                    raise FoniaApiError(f"Fonia returned a non-JSON response for {path}") from err
+                    raise FoniaApiError(
+                        f"Fonia returned a non-JSON response for {path}"
+                    ) from err
                 if not isinstance(data, dict):
                     raise FoniaApiError(f"Unexpected response for {path}")
                 return data

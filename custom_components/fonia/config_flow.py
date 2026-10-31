@@ -46,20 +46,27 @@ class FoniaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # pyright: ign
             else:
                 return self.async_create_entry(
                     title=user.get("name") or "Fonia",
-                    data={CONF_USERNAME: username, CONF_PASSWORD: user_input[CONF_PASSWORD]},
+                    data={
+                        CONF_USERNAME: username,
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                    },
                 )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({
-                vol.Required(CONF_USERNAME): str,
-                vol.Required(CONF_PASSWORD): str,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_USERNAME): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            ),
             errors=errors,
         )
 
     async def async_step_reauth(self, entry_data):
-        self._reauth_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        self._reauth_entry = self.hass.config_entries.async_get_entry(
+            self.context["entry_id"]
+        )
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(self, user_input=None):
@@ -80,21 +87,28 @@ class FoniaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # pyright: ign
             else:
                 return self.async_update_reload_and_abort(
                     entry,
-                    data_updates={CONF_USERNAME: username, CONF_PASSWORD: user_input[CONF_PASSWORD]},
+                    data_updates={
+                        CONF_USERNAME: username,
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                    },
                 )
 
         return self.async_show_form(
             step_id="reauth_confirm",
-            data_schema=vol.Schema({
-                vol.Required(CONF_USERNAME, default=entry.data[CONF_USERNAME]): str,
-                vol.Required(CONF_PASSWORD): str,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_USERNAME, default=entry.data[CONF_USERNAME]): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            ),
             errors=errors,
         )
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> FoniaOptionsFlow:
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> FoniaOptionsFlow:
         """Create the options flow."""
         return FoniaOptionsFlow()
 
@@ -108,14 +122,23 @@ class FoniaOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required(
-                    CONF_SCAN_INTERVAL,
-                    default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES),
-                ): vol.All(int, vol.Range(min=MIN_SCAN_INTERVAL_MINUTES, max=MAX_SCAN_INTERVAL_MINUTES)),
-                vol.Required(
-                    CONF_USAGE_SYNC,
-                    default=self.config_entry.options.get(CONF_USAGE_SYNC, True),
-                ): bool,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SCAN_INTERVAL,
+                        default=self.config_entry.options.get(
+                            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES
+                        ),
+                    ): vol.All(
+                        int,
+                        vol.Range(
+                            min=MIN_SCAN_INTERVAL_MINUTES, max=MAX_SCAN_INTERVAL_MINUTES
+                        ),
+                    ),
+                    vol.Required(
+                        CONF_USAGE_SYNC,
+                        default=self.config_entry.options.get(CONF_USAGE_SYNC, True),
+                    ): bool,
+                }
+            ),
         )

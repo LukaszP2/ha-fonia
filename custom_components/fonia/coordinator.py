@@ -33,7 +33,9 @@ class FoniaCoordinator(DataUpdateCoordinator[FoniaData]):
         self.last_details_update: datetime | None = None
         self.last_account_update: datetime | None = None
         self.usage_sync_enabled = bool(entry.options.get(CONF_USAGE_SYNC, True))
-        scan_minutes = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES)
+        scan_minutes = entry.options.get(
+            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES
+        )
         self.scan_interval = timedelta(minutes=max(5, min(60, int(scan_minutes))))
         super().__init__(
             hass,
@@ -52,7 +54,8 @@ class FoniaCoordinator(DataUpdateCoordinator[FoniaData]):
         previous = self.data or FoniaData()
         try:
             if self.usage_sync_enabled and (
-                self.last_usage_sync is None or now - self.last_usage_sync >= USAGE_SYNC_INTERVAL
+                self.last_usage_sync is None
+                or now - self.last_usage_sync >= USAGE_SYNC_INTERVAL
             ):
                 await self.api.usage_sync()
                 self.last_usage_sync = now
@@ -61,46 +64,75 @@ class FoniaCoordinator(DataUpdateCoordinator[FoniaData]):
             raw_subscriptions = subscriptions_response.get("data") or []
             if not isinstance(raw_subscriptions, list):
                 raise UpdateFailed("Unexpected subscriptions response from Fonia")
-            subscriptions = [normalize(item) for item in raw_subscriptions if isinstance(item, dict) and item.get("uuid")]
+            subscriptions = [
+                normalize(item)
+                for item in raw_subscriptions
+                if isinstance(item, dict) and item.get("uuid")
+            ]
             result = FoniaData(subscriptions=subscriptions)
 
-            if self.last_details_update is None or now - self.last_details_update >= DETAILS_SCAN_INTERVAL:
+            if (
+                self.last_details_update is None
+                or now - self.last_details_update >= DETAILS_SCAN_INTERVAL
+            ):
                 details_ok = True
                 for subscription in subscriptions:
                     try:
                         detail = await self.api.subscription(subscription.uuid)
                         detail_data = detail.get("data") or detail
                         if not isinstance(detail_data, dict):
-                            raise FoniaApiError("Unexpected subscription detail response")
-                        result.orders[subscription.uuid] = _dict_list(detail_data.get("orders"))
+                            raise FoniaApiError(
+                                "Unexpected subscription detail response"
+                            )
+                        result.orders[subscription.uuid] = _dict_list(
+                            detail_data.get("orders")
+                        )
                         payment_method = detail_data.get("payment_method")
-                        result.payment_methods[subscription.uuid] = payment_method if isinstance(payment_method, dict) else {}
+                        result.payment_methods[subscription.uuid] = (
+                            payment_method if isinstance(payment_method, dict) else {}
+                        )
                     except (FoniaAuthError, FoniaRateLimitError):
                         raise
                     except FoniaApiError:
                         details_ok = False
-                        result.orders[subscription.uuid] = previous.orders.get(subscription.uuid, [])
-                        result.payment_methods[subscription.uuid] = previous.payment_methods.get(subscription.uuid, {})
-                        _LOGGER.debug("Unable to update details for a Fonia subscription", exc_info=True)
+                        result.orders[subscription.uuid] = previous.orders.get(
+                            subscription.uuid, []
+                        )
+                        result.payment_methods[subscription.uuid] = (
+                            previous.payment_methods.get(subscription.uuid, {})
+                        )
+                        _LOGGER.debug(
+                            "Unable to update details for a Fonia subscription",
+                            exc_info=True,
+                        )
                 if details_ok:
                     self.last_details_update = now
             else:
                 result.orders = {
-                    item.uuid: previous.orders.get(item.uuid, []) for item in subscriptions
+                    item.uuid: previous.orders.get(item.uuid, [])
+                    for item in subscriptions
                 }
                 result.payment_methods = {
-                    item.uuid: previous.payment_methods.get(item.uuid, {}) for item in subscriptions
+                    item.uuid: previous.payment_methods.get(item.uuid, {})
+                    for item in subscriptions
                 }
 
-            if self.last_account_update is None or now - self.last_account_update >= ACCOUNT_SCAN_INTERVAL:
+            if (
+                self.last_account_update is None
+                or now - self.last_account_update >= ACCOUNT_SCAN_INTERVAL
+            ):
                 account_ok = True
                 try:
                     cashback = await self.api.cashback()
                     cashback_data = cashback.get("data") or cashback
                     if not isinstance(cashback_data, dict):
                         raise FoniaApiError("Unexpected cashback response")
-                    result.cashback_balance = _cashback_pln(cashback_data.get("balance"))
-                    result.cashback_spendable = _cashback_pln(cashback_data.get("spendable"))
+                    result.cashback_balance = _cashback_pln(
+                        cashback_data.get("balance")
+                    )
+                    result.cashback_spendable = _cashback_pln(
+                        cashback_data.get("spendable")
+                    )
                 except (FoniaAuthError, FoniaRateLimitError):
                     raise
                 except FoniaApiError:
@@ -117,13 +149,17 @@ class FoniaCoordinator(DataUpdateCoordinator[FoniaData]):
                     result.site_alerts = previous.site_alerts
                     _LOGGER.debug("Unable to update Fonia site alerts", exc_info=True)
                 try:
-                    result.cashback_transactions = _list_data(await self.api.cashback_transactions())
+                    result.cashback_transactions = _list_data(
+                        await self.api.cashback_transactions()
+                    )
                 except (FoniaAuthError, FoniaRateLimitError):
                     raise
                 except FoniaApiError:
                     account_ok = False
                     result.cashback_transactions = previous.cashback_transactions
-                    _LOGGER.debug("Unable to update Fonia cashback transactions", exc_info=True)
+                    _LOGGER.debug(
+                        "Unable to update Fonia cashback transactions", exc_info=True
+                    )
                 if account_ok:
                     self.last_account_update = now
             else:
@@ -150,7 +186,6 @@ def _number(value: object) -> float | None:
         return float(value)
     except (OverflowError, ValueError):
         return None
-
 
 
 def _cashback_pln(value: object) -> float | None:
