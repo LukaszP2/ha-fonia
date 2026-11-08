@@ -2,6 +2,7 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/LukaszP2/ha-fonia?style=flat-square)](https://github.com/LukaszP2/ha-fonia/releases)
 [![Home Assistant Marketplace](https://img.shields.io/badge/HA-Marketplace-blue.svg?style=flat-square)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=LukaszP2&repository=ha-fonia&category=integration)
+[![Languages: EN | PL](https://img.shields.io/badge/Languages-EN%20%7C%20PL-orange.svg?style=flat-square)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 
 [![Open repository in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=LukaszP2&repository=ha-fonia&category=integration)
@@ -25,6 +26,7 @@ Unofficial **Fonia** mobile operator integration for Home Assistant. It monitors
 - **Flexible Options**: Custom account name, customizable scan interval (5–60 minutes), optional background usage sync toggle, and category filtering (Payments, Usage, History, Advanced).
 - **Diagnostics & Security**: Secure credential handling with automatic re-authentication flow, reconfiguration support, and redacted diagnostics export.
 - **Automated Blueprint Deployment**: Pre-built automation blueprints deployed straight to your Home Assistant instance upon setup.
+- **Multi-language Support (EN / PL)**: Fully localized into English and Polish across all entity names, device names, configuration flows, options, and error messages.
 
 *(Note: Voice call minutes and SMS/MMS counters are not exposed by the operator's web API. They will be integrated if made available in the future.)*
 
@@ -121,6 +123,16 @@ Sends an immediate notification whenever your cashback balance changes, reportin
 
 ---
 
+### ❓ Frequently Asked Questions (FAQ)
+
+**What happens if a phone number or SIM card is cancelled or replaced?**  
+The entities associated with the inactive SIM card will transition to the `unavailable` state. This is intentional to preserve your historical recorder statistics and long-term data charts. If you wish to permanently remove the inactive device from Home Assistant:
+1. Navigate to **Settings** > **Devices & services** > **Devices**.
+2. Select the inactive Fonia SIM device (e.g. `Fonia · +48...`).
+3. Click the three dots menu (⋮) in the top-right corner of the device card and select **Delete**.
+
+---
+
 ## 🇵🇱 Opis
 
 Nieoficjalna integracja z operatorem sieci komórkowej **Fonia** dla Home Assistant. Umożliwia monitorowanie pakietów danych krajowych i roamingu UE, statusu kart SIM, dat odnowienia subskrypcji i cen, salda cashback oraz ręczną synchronizację danych zużycia.
@@ -135,6 +147,7 @@ Nieoficjalna integracja z operatorem sieci komórkowej **Fonia** dla Home Assist
 - **Elastyczne opcje**: Własna nazwa instancji, konfigurowalny interwał odpytywania (5–60 minut), opcjonalna automatyczna synchronizacja zużycia (co 2 godziny) oraz filtrowanie kategorii encji (Płatności, Zużycie, Historia, Zaawansowane).
 - **Diagnostyka i bezpieczeństwo**: Bezpieczne przechowywanie danych logowania, obsługa ponownego uwierzytelnienia (reauth), rekonfiguracji oraz eksport zanonimizowanej diagnostyki.
 - **Automatyczne wdrażanie blueprintów**: Gotowe szablony automatyzacji są kopiowane do instancji Home Assistant zaraz po uruchomieniu integracji.
+- **Wersje językowe (PL / EN)**: Pełne tłumaczenie na język polski i angielski dla wszystkich encji, urządzeń, formularzy konfiguracji, opcji oraz komunikatów błędów.
 
 *(Uwaga: liczniki minut oraz SMS/MMS nie są udostępniane przez interfejs webowy operatora. Zostaną dodane, jeśli operator udostępni je w przyszłości.)*
 
@@ -228,6 +241,16 @@ Wysyła natychmiastowe powiadomienie o każdej zmianie salda cashback (nowy zwro
 | **Sensor** | `cashback_transaction_count` | Liczba transakcji cashback *(domyślnie wyłączony)* | Historia / Diagnostyka (Konto Fonia) |
 | **Sensor** | `site_alert_count` | Liczba komunikatów operatora *(domyślnie wyłączony)* | Zaawansowane / Diagnostyka (Konto Fonia) |
 | **Przycisk**| `usage_sync` | Wymuszenie synchronizacji zużycia danych z Fonia | Przycisk (Konto Fonia) |
+
+---
+
+### ❓ Często zadawane pytania (FAQ)
+
+**Co się dzieje po rezygnacji z numeru lub wymianie karty SIM?**  
+Encje przypisane do nieaktywnej karty przechodzą w stan `Niedostępny` (`unavailable`). Jest to zamierzone działanie Home Assistant mające na celu ochronę danych historycznych i statystyk w bazie Recorder. Jeśli chcesz trwale usunąć nieaktywny numer z Home Assistant:
+1. Przejdź do: **Ustawienia** > **Urządzenia oraz usługi** > **Urządzenia**.
+2. Wybierz nieaktywne urządzenie Fonia (np. `Fonia · +48...`).
+3. Kliknij menu w prawym górnym rogu karty urządzenia (trzy kropki ⋮) i wybierz **Usuń**.
 
 ---
 

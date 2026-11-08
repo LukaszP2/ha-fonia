@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 blueprint:
   name: "Fonia — Przypomnienie o płatności subskrypcji"
   description: >-

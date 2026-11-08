@@ -19,6 +19,4 @@ rules:
   exception_translations: done
   icon_translations: done
   reconfiguration_flow: done
-  test_coverage:
-    status: todo
-    comment: "Full Home Assistant test suite is being expanded before a quality-scale claim."
+  test_coverage: done

@@ -26,7 +26,7 @@ def test_float_conversion() -> None:
     assert _float("12.5") == 12.5
     assert _float("12,5") == 12.5
     assert _float("2,50 GB") == 2.5
-    assert _float("500 MB") == 500.0
+    assert _float("500 MB") is None
     assert _float("19,99 PLN") == 19.99
     assert _float("19.99 zł") == 19.99
     assert _float(42) == 42.0

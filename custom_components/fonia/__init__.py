@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+from inspect import isawaitable
 from pathlib import Path
 from typing import TypeAlias
 
@@ -47,7 +48,10 @@ async def _async_deploy_blueprints(hass: HomeAssistant) -> None:
         return
 
     try:
-        target_dir = Path(target_path_fn("blueprints", "automation", DOMAIN))
+        target_path = target_path_fn("blueprints", "automation", DOMAIN)
+        if not isinstance(target_path, (str, Path)):
+            return
+        target_dir = Path(target_path)
     except (AttributeError, TypeError):
         return
 
@@ -57,7 +61,7 @@ async def _async_deploy_blueprints(hass: HomeAssistant) -> None:
 
     try:
         job = add_job(_sync_blueprints, source_dir, target_dir)
-        updated = await job if hasattr(job, "__await__") else job
+        updated = (await job) if isawaitable(job) else bool(job)
 
         if (
             updated
@@ -67,7 +71,7 @@ async def _async_deploy_blueprints(hass: HomeAssistant) -> None:
             and hass.services.has_service("automation", "reload")
         ):
             call = hass.services.async_call("automation", "reload", blocking=False)
-            if hasattr(call, "__await__"):
+            if isawaitable(call):
                 await call
     except (OSError, RuntimeError) as err:
         _LOGGER.debug("Skipping blueprint auto-deploy: %s", err)
@@ -81,8 +85,6 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: FoniaConfigEntry) -> bool:
     """Set up Fonia from a config entry."""
-    await _async_deploy_blueprints(hass)
-
     api = FoniaApi(
         async_get_clientsession(hass),
         username=entry.data[CONF_USERNAME],

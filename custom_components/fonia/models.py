@@ -24,8 +24,6 @@ def _float(value: Any) -> float | None:
         .replace(",", ".")
         .replace("GB", "")
         .replace("gb", "")
-        .replace("MB", "")
-        .replace("mb", "")
         .replace("PLN", "")
         .replace("pln", "")
         .replace("zł", "")

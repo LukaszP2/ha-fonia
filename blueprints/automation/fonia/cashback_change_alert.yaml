@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 blueprint:
   name: "Fonia — Powiadomienie o zmianie kwoty cashback"
   description: >-
@@ -44,11 +45,11 @@ blueprint:
           selector:
             select:
               options:
-                - label: "Wszystkie zmiany (zasilenia i wypłaty)"
+                - "label": "Wszystkie zmiany (zasilenia i wypłaty)"
                   value: "all"
-                - label: "Tylko naliczenia (+ zasilenia)"
+                - "label": "Tylko naliczenia (+ zasilenia)"
                   value: "increase_only"
-                - label: "Tylko pobrania (- obciążenia)"
+                - "label": "Tylko pobrania (- obciążenia)"
                   value: "decrease_only"
     notifications_section:
       name: Powiadomienia i akcje

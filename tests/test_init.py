@@ -132,4 +132,3 @@ def test_sync_blueprints(tmp_path) -> None:
     (src_dir / "bp1.yaml").write_text("blueprint 1 updated")
     assert _sync_blueprints(src_dir, dst_dir) is True
     assert (dst_dir / "bp1.yaml").read_text() == "blueprint 1 updated"
-
