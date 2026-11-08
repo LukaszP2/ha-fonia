@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -19,7 +19,7 @@ async def test_diagnostics_redacts_credentials() -> None:
     entry.options = {"scan_interval": 15}
 
     coordinator = MagicMock()
-    coordinator.last_usage_sync = datetime(2026, 11, 6, 10, 0, tzinfo=timezone.utc)
+    coordinator.last_usage_sync = datetime(2026, 11, 6, 10, 0, tzinfo=UTC)
     coordinator.last_details_update = None
     coordinator.last_account_update = None
     coordinator.last_update_success = True
