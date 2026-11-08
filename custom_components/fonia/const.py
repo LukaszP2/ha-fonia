@@ -4,7 +4,7 @@ from datetime import timedelta
 
 DOMAIN = "fonia"
 NAME = "Fonia"
-VERSION = "0.6.0"
+VERSION = "0.6.1"
 API_BASE = "https://moja.fonia.app/api"
 DEFAULT_SCAN_INTERVAL = timedelta(minutes=15)
 USAGE_SYNC_INTERVAL = timedelta(hours=2)
