@@ -1,0 +1,106 @@
+blueprint:
+  name: "Fonia — Alert o wyczerpywaniu pakietu internetu"
+  description: >-
+    Wysyła powiadomienie na telefon, gdy pozostały limit danych krajowych (GB)
+    na karcie SIM Fonia spadnie poniżej ustalonego progu.
+  domain: automation
+  homeassistant:
+    min_version: "2024.6.0"
+  input:
+    entities_section:
+      name: Sensory Fonia
+      icon: mdi:sim
+      description: Wybierz sensory monitorujące kartę SIM Fonia.
+      input:
+        data_remaining_sensor:
+          name: Sensor pozostałego internetu
+          description: Sensor raportujący pozostały transfer w GB (np. sensor.fonia_*_data_remaining).
+          selector:
+            entity:
+              filter:
+                - integration: fonia
+                  domain: sensor
+                  device_class: data_size
+        data_total_sensor:
+          name: Sensor łącznego pakietu (opcjonalnie)
+          description: Sensor całkowitego pakietu GB (np. sensor.fonia_*_data_total) do wyliczenia procentu zużycia.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - integration: fonia
+                  domain: sensor
+                  device_class: data_size
+    thresholds_section:
+      name: Progi ostrzegawcze
+      icon: mdi:gauge-empty
+      description: Konfiguracja progu wyzwalającego alert.
+      input:
+        threshold_gb:
+          name: Próg pozostałych danych (GB)
+          description: Powiadomienie zostanie wyzwolone, gdy transfer spadnie poniżej tej wartości.
+          default: 2.0
+          selector:
+            number:
+              min: 0.1
+              max: 100.0
+              step: 0.1
+              unit_of_measurement: "GB"
+              mode: box
+    notifications_section:
+      name: Powiadomienia i akcje
+      icon: mdi:bell-ring
+      description: Odbiorca powiadomień oraz ewentualne dodatkowe akcje.
+      input:
+        notify_device:
+          name: Urządzenie do powiadomień
+          description: Telefon lub tablet z zainstalowaną oficjalną aplikacją Home Assistant.
+          selector:
+            device:
+              filter:
+                integration: mobile_app
+        custom_actions:
+          name: Dodatkowe akcje (opcjonalnie)
+          description: Dowolne dodatkowe akcje do wykonania w momencie wyzwolenia alertu (np. powiadomienie Telegram, zapalenie lampki).
+          default: []
+          selector:
+            action: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - trigger: numeric_state
+    entity_id: !input data_remaining_sensor
+    below: !input threshold_gb
+
+variables:
+  total_sensor: !input data_total_sensor
+
+condition:
+  - condition: template
+    value_template: >-
+      {{ trigger.to_state is not none
+         and trigger.to_state.state not in ['unavailable', 'unknown']
+         and trigger.from_state is not none
+         and trigger.from_state.state not in ['unavailable', 'unknown'] }}
+
+action:
+  - alias: "Wyślij powiadomienie na aplikację mobilną"
+    domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: "⚠️ Fonia: Kończy się pakiet internetu"
+    message: >-
+      {% set remaining = trigger.to_state.state | float(0) | round(2) %}
+      {% if total_sensor != "" and states(total_sensor) not in ['unavailable', 'unknown'] %}
+        {% set total = states(total_sensor) | float(0) | round(2) %}
+        {% set pct = ((remaining / total) * 100) | round(1) if total > 0 else 0 %}
+        Pozostało tylko {{ remaining }} GB z {{ total }} GB ({{ pct }}%).
+      {% else %}
+        Pozostało tylko {{ remaining }} GB danych na karcie SIM Fonia.
+      {% endif %}
+    data:
+      tag: "fonia-data-low-{{ trigger.entity_id }}"
+      notification_icon: "mdi:sim-alert"
+  - sequence: !input custom_actions

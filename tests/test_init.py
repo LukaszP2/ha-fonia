@@ -6,6 +6,8 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
 from custom_components.fonia import (
     _async_options_updated,
+    _sync_blueprints,
+    async_setup,
     async_setup_entry,
     async_unload_entry,
 )
@@ -99,3 +101,35 @@ async def test_async_options_updated(mock_entry) -> None:
 
     await _async_options_updated(hass, mock_entry)
     hass.config_entries.async_reload.assert_awaited_once_with("test_entry_id")
+
+
+@pytest.mark.asyncio
+async def test_async_setup(tmp_path) -> None:
+    hass = MagicMock()
+    hass.config.path.return_value = str(tmp_path / "blueprints")
+    hass.services.has_service.return_value = False
+
+    result = await async_setup(hass, {})
+    assert result is True
+
+
+def test_sync_blueprints(tmp_path) -> None:
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    (src_dir / "bp1.yaml").write_text("blueprint 1 content")
+
+    dst_dir = tmp_path / "dst"
+
+    # First sync copies new files
+    assert _sync_blueprints(src_dir, dst_dir) is True
+    assert (dst_dir / "bp1.yaml").exists()
+    assert (dst_dir / "bp1.yaml").read_text() == "blueprint 1 content"
+
+    # Second sync without changes returns False
+    assert _sync_blueprints(src_dir, dst_dir) is False
+
+    # Sync updates when source changes
+    (src_dir / "bp1.yaml").write_text("blueprint 1 updated")
+    assert _sync_blueprints(src_dir, dst_dir) is True
+    assert (dst_dir / "bp1.yaml").read_text() == "blueprint 1 updated"
+

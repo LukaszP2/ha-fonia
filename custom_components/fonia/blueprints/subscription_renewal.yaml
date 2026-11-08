@@ -1,0 +1,132 @@
+blueprint:
+  name: "Fonia — Przypomnienie o płatności subskrypcji"
+  description: >-
+    Codziennie o określonej godzinie sprawdza datę kolejnej płatności Fonia
+    i wysyła przypomnienie z wyprzedzeniem (np. 3 dni przed i/lub 1 dzień przed),
+    aby zapewnić środki na karcie płatniczej.
+  domain: automation
+  homeassistant:
+    min_version: "2024.6.0"
+  input:
+    entities_section:
+      name: Sensory subskrypcji Fonia
+      icon: mdi:calendar-clock
+      description: Wybierz sensory subskrypcji Fonia.
+      input:
+        next_payment_sensor:
+          name: Sensor daty następnej płatności
+          description: Sensor raportujący datę kolejnego odnowienia (np. sensor.fonia_*_next_payment).
+          selector:
+            entity:
+              filter:
+                - integration: fonia
+                  domain: sensor
+                  device_class: date
+        renewal_price_sensor:
+          name: Sensor ceny odnowienia (opcjonalnie)
+          description: Sensor ceny odnowienia w PLN (np. sensor.fonia_*_renewal_price).
+          default: ""
+          selector:
+            entity:
+              filter:
+                - integration: fonia
+                  domain: sensor
+                  device_class: monetary
+    schedule_section:
+      name: Harmonogram i wyprzedzenie
+      icon: mdi:clock-outline
+      description: Określ, kiedy i z jakim wyprzedzeniem chcesz otrzymać przypomnienie.
+      input:
+        reminder_time:
+          name: Godzina powiadomienia
+          description: Godzina, o której ma nastąpić sprawdzenie i ewentualne wysłanie alertu.
+          default: "09:00:00"
+          selector:
+            time: {}
+        days_before:
+          name: Liczba dni wyprzedzenia
+          description: Na ile dni przed terminem płatności wysłać główne przypomnienie.
+          default: 3
+          selector:
+            number:
+              min: 1
+              max: 14
+              step: 1
+              unit_of_measurement: "dni"
+              mode: box
+        notify_day_before:
+          name: Dodatkowe przypomnienie na 1 dzień przed
+          description: Wyślij także pilne przypomnienie dzień przed terminem pobrania środków.
+          default: true
+          selector:
+            boolean: {}
+    notifications_section:
+      name: Powiadomienia i akcje
+      icon: mdi:bell-ring
+      description: Odbiorca powiadomień oraz opcjonalne akcje.
+      input:
+        notify_device:
+          name: Urządzenie do powiadomień
+          description: Telefon lub tablet z zainstalowaną oficjalną aplikacją Home Assistant.
+          selector:
+            device:
+              filter:
+                integration: mobile_app
+        custom_actions:
+          name: Dodatkowe akcje (opcjonalnie)
+          description: Dodatkowe akcje wykonywane w momencie przypomnienia.
+          default: []
+          selector:
+            action: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - trigger: time
+    at: !input reminder_time
+
+variables:
+  next_pay_sensor: !input next_payment_sensor
+  price_sensor: !input renewal_price_sensor
+  days_before_input: !input days_before
+  day_before_enabled: !input notify_day_before
+
+condition:
+  - condition: template
+    value_template: >-
+      {% set next_date_str = states(next_pay_sensor) %}
+      {% if next_date_str in ['unavailable', 'unknown', 'none', ''] %}
+        false
+      {% else %}
+        {% set dt = as_datetime(next_date_str) %}
+        {% if dt is none %}
+          false
+        {% else %}
+          {% set target_date = dt.date() %}
+          {% set today = now().date() %}
+          {% set diff = (target_date - today).days %}
+          {{ diff == (days_before_input | int) or (day_before_enabled and diff == 1) }}
+        {% endif %}
+      {% endif %}
+
+action:
+  - alias: "Wyślij przypomnienie o płatności"
+    domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: "💳 Fonia: Zbliża się odnowienie subskrypcji"
+    message: >-
+      {% set dt = as_datetime(states(next_pay_sensor)) %}
+      {% set target_date = dt.date() if dt is not none else states(next_pay_sensor) %}
+      {% set diff = (target_date - now().date()).days if dt is not none else 0 %}
+      {% set price_val = states(price_sensor) if price_sensor != '' and states(price_sensor) not in ['unavailable', 'unknown'] else '' %}
+      {% if diff == 1 %}
+        Jutro ({{ target_date }}) nastąpi odnowienie subskrypcji Fonia{% if price_val %} na kwotę {{ price_val }} PLN{% endif %}. Upewnij się, że na karcie są dostępne środki.
+      {% else %}
+        Za {{ diff }} dni ({{ target_date }}) nastąpi odnowienie subskrypcji Fonia{% if price_val %} na kwotę {{ price_val }} PLN{% endif %}.
+      {% endif %}
+    data:
+      tag: "fonia-payment-{{ next_pay_sensor }}"
+      notification_icon: "mdi:credit-card-clock"
+  - sequence: !input custom_actions
