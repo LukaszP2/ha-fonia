@@ -25,8 +25,15 @@ class FoniaRateLimitError(FoniaApiError):
 class FoniaApi:
     """Async client for the Fonia web API."""
 
-    def __init__(self, session: ClientSession) -> None:
+    def __init__(
+        self,
+        session: ClientSession,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
         self.session = session
+        self.username = username
+        self.password = password
         self.token: str | None = None
 
     @staticmethod
@@ -40,18 +47,33 @@ class FoniaApi:
             "Referer": "https://moja.fonia.app/login",
         }
 
-    async def login(self, username: str, password: str) -> dict[str, Any]:
+    async def login(
+        self, username: str | None = None, password: str | None = None
+    ) -> dict[str, Any]:
+        user = username or self.username
+        pwd = password or self.password
+        if not user or not pwd:
+            raise FoniaAuthError("Username and password are required for login")
+        self.username = user
+        self.password = pwd
+
         try:
             async with self.session.post(
                 f"{API_BASE}/login",
-                json={"identifier": username, "password": password},
+                json={"identifier": user, "password": pwd},
                 headers={**self._browser_headers(), "Content-Type": "application/json"},
                 timeout=ClientTimeout(total=20),
             ) as response:
                 if response.status in (401, 403):
                     raise FoniaAuthError("Invalid credentials")
                 if response.status == 429:
-                    raise FoniaRateLimitError("Fonia login rate limit reached")
+                    retry_after = response.headers.get("Retry-After")
+                    msg = (
+                        f"Fonia login rate limit reached (Retry-After: {retry_after})"
+                        if retry_after
+                        else "Fonia login rate limit reached"
+                    )
+                    raise FoniaRateLimitError(msg)
                 if response.status >= 400:
                     raise FoniaApiError(f"HTTP {response.status}")
                 try:
@@ -80,33 +102,51 @@ class FoniaApi:
             "Referer": "https://moja.fonia.app/",
         }
 
+    async def _ensure_token(self) -> None:
+        """Ensure an active token exists, attempting login if credentials are set."""
+        if not self.token and self.username and self.password:
+            await self.login(self.username, self.password)
+
     async def get(self, path: str, **params: str) -> dict[str, Any]:
-        try:
-            async with self.session.get(
-                f"{API_BASE}{path}",
-                headers=self.headers(),
-                params=params,
-                timeout=ClientTimeout(total=20),
-            ) as response:
-                if response.status in (401, 403):
-                    raise FoniaAuthError("Authentication expired")
-                if response.status == 429:
-                    raise FoniaRateLimitError("Fonia API rate limit reached")
-                if response.status >= 400:
-                    raise FoniaApiError(f"HTTP {response.status}")
-                try:
-                    data = await response.json()
-                except (ContentTypeError, ValueError) as err:
-                    raise FoniaApiError(
-                        f"Fonia returned a non-JSON response for {path}"
-                    ) from err
-                if not isinstance(data, dict):
-                    raise FoniaApiError(f"Unexpected response for {path}")
-                return data
-        except FoniaApiError:
-            raise
-        except (ClientError, TimeoutError) as err:
-            raise FoniaApiError("Unable to connect to Fonia") from err
+        await self._ensure_token()
+        for attempt in range(2):
+            try:
+                async with self.session.get(
+                    f"{API_BASE}{path}",
+                    headers=self.headers(),
+                    params=params,
+                    timeout=ClientTimeout(total=20),
+                ) as response:
+                    if response.status in (401, 403):
+                        if attempt == 0 and self.username and self.password:
+                            self.token = None
+                            await self.login(self.username, self.password)
+                            continue
+                        raise FoniaAuthError("Authentication expired")
+                    if response.status == 429:
+                        retry_after = response.headers.get("Retry-After")
+                        msg = (
+                            f"Fonia API rate limit reached (Retry-After: {retry_after})"
+                            if retry_after
+                            else "Fonia API rate limit reached"
+                        )
+                        raise FoniaRateLimitError(msg)
+                    if response.status >= 400:
+                        raise FoniaApiError(f"HTTP {response.status}")
+                    try:
+                        data = await response.json()
+                    except (ContentTypeError, ValueError) as err:
+                        raise FoniaApiError(
+                            f"Fonia returned a non-JSON response for {path}"
+                        ) from err
+                    if not isinstance(data, dict):
+                        raise FoniaApiError(f"Unexpected response for {path}")
+                    return data
+            except FoniaApiError:
+                raise
+            except (ClientError, TimeoutError) as err:
+                raise FoniaApiError("Unable to connect to Fonia") from err
+        raise FoniaAuthError("Authentication expired")
 
     async def subscriptions(self) -> dict[str, Any]:
         return await self.get("/subscriptions", include="tariff,usage")
@@ -131,30 +171,43 @@ class FoniaApi:
 
     async def usage_sync(self) -> dict[str, Any]:
         """Ask Fonia to refresh usage data. Empty/204 responses are valid."""
-        try:
-            async with self.session.post(
-                f"{API_BASE}/usage-sync",
-                headers=self.headers(),
-                timeout=ClientTimeout(total=20),
-            ) as response:
-                if response.status in (401, 403):
-                    raise FoniaAuthError("Authentication expired")
-                if response.status == 429:
-                    raise FoniaRateLimitError("Fonia API rate limit reached")
-                if response.status >= 400:
-                    raise FoniaApiError(f"HTTP {response.status}")
-                if response.status == 204:
-                    return {}
-                body = await response.text()
-                if not body.strip():
-                    return {}
-                try:
-                    data = await response.json()
-                except (ContentTypeError, ValueError):
-                    _LOGGER.debug("Fonia usage-sync returned a non-JSON body")
-                    return {}
-                return data if isinstance(data, dict) else {}
-        except FoniaApiError:
-            raise
-        except (ClientError, TimeoutError) as err:
-            raise FoniaApiError("Unable to connect to Fonia") from err
+        await self._ensure_token()
+        for attempt in range(2):
+            try:
+                async with self.session.post(
+                    f"{API_BASE}/usage-sync",
+                    headers=self.headers(),
+                    timeout=ClientTimeout(total=20),
+                ) as response:
+                    if response.status in (401, 403):
+                        if attempt == 0 and self.username and self.password:
+                            self.token = None
+                            await self.login(self.username, self.password)
+                            continue
+                        raise FoniaAuthError("Authentication expired")
+                    if response.status == 429:
+                        retry_after = response.headers.get("Retry-After")
+                        msg = (
+                            f"Fonia API rate limit reached (Retry-After: {retry_after})"
+                            if retry_after
+                            else "Fonia API rate limit reached"
+                        )
+                        raise FoniaRateLimitError(msg)
+                    if response.status >= 400:
+                        raise FoniaApiError(f"HTTP {response.status}")
+                    if response.status == 204:
+                        return {}
+                    body = await response.text()
+                    if not body.strip():
+                        return {}
+                    try:
+                        data = await response.json()
+                    except (ContentTypeError, ValueError):
+                        _LOGGER.debug("Fonia usage-sync returned a non-JSON body")
+                        return {}
+                    return data if isinstance(data, dict) else {}
+            except FoniaApiError:
+                raise
+            except (ClientError, TimeoutError) as err:
+                raise FoniaApiError("Unable to connect to Fonia") from err
+        raise FoniaAuthError("Authentication expired")

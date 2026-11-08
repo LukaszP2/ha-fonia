@@ -17,9 +17,13 @@ FoniaConfigEntry: TypeAlias = ConfigEntry[FoniaCoordinator]
 
 async def async_setup_entry(hass: HomeAssistant, entry: FoniaConfigEntry) -> bool:
     """Set up Fonia from a config entry."""
-    api = FoniaApi(async_get_clientsession(hass))
+    api = FoniaApi(
+        async_get_clientsession(hass),
+        username=entry.data[CONF_USERNAME],
+        password=entry.data[CONF_PASSWORD],
+    )
     try:
-        await api.login(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
+        await api.login()
     except FoniaAuthError as err:
         raise ConfigEntryAuthFailed("Fonia authentication failed") from err
     except FoniaApiError as err:

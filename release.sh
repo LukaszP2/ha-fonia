@@ -11,15 +11,25 @@ NEW_VER="$1"
 MSG="${2:-Wydanie v${NEW_VER}}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST="${REPO_DIR}/custom_components/fonia/manifest.json"
+CONST_FILE="${REPO_DIR}/custom_components/fonia/const.py"
 
 python3 -c "
 import json
+import re
+
 with open('${MANIFEST}', 'r+') as f:
     d = json.load(f)
     d['version'] = '${NEW_VER}'
     f.seek(0)
     json.dump(d, f, indent=2, ensure_ascii=False)
     f.write('\n')
+    f.truncate()
+
+with open('${CONST_FILE}', 'r+') as f:
+    content = f.read()
+    content = re.sub(r'VERSION = \"[^\"]+\"', f'VERSION = \"${NEW_VER}\"', content)
+    f.seek(0)
+    f.write(content)
     f.truncate()
 "
 

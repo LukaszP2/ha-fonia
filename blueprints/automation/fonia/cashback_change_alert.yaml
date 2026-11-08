@@ -1,0 +1,127 @@
+blueprint:
+  name: "Fonia — Powiadomienie o zmianie kwoty cashback"
+  description: >-
+    Wysyła powiadomienie przy każdej zmianie salda cashback (naliczenie zwrotu
+    lub wykorzystanie środków) z informacją o różnicy kwoty i bieżącym saldzie.
+  domain: automation
+  homeassistant:
+    min_version: "2024.6.0"
+  input:
+    entities_section:
+      name: Sensor Cashback
+      icon: mdi:cash-multiple
+      description: Wybierz sensor cashbacku Fonia.
+      input:
+        cashback_sensor:
+          name: Sensor cashbacku
+          description: Sensor salda lub dostępnego cashbacku (np. sensor.fonia_cashback_spendable lub sensor.fonia_cashback_balance).
+          selector:
+            entity:
+              filter:
+                - integration: fonia
+                  domain: sensor
+                  device_class: monetary
+    settings_section:
+      name: Ustawienia alertu
+      icon: mdi:tune
+      description: Opcje filtrowania zmian salda.
+      input:
+        min_change:
+          name: Minimalna zmiana kwoty (PLN)
+          description: Ignoruj zmiany mniejsze niż ta kwota (zapobiega powiadomieniom przy zaokrągleniach).
+          default: 0.01
+          selector:
+            number:
+              min: 0.01
+              max: 50.0
+              step: 0.01
+              unit_of_measurement: "PLN"
+              mode: box
+        notify_mode:
+          name: Rodzaj zmian do raportowania
+          description: Wybierz, jakie operacje mają wywołać powiadomienie.
+          default: "all"
+          selector:
+            select:
+              options:
+                - label: "Wszystkie zmiany (zasilenia i wypłaty)"
+                  value: "all"
+                - label: "Tylko naliczenia (+ zasilenia)"
+                  value: "increase_only"
+                - label: "Tylko pobrania (- obciążenia)"
+                  value: "decrease_only"
+    notifications_section:
+      name: Powiadomienia i akcje
+      icon: mdi:bell-ring
+      description: Odbiorca powiadomień oraz opcjonalne akcje.
+      input:
+        notify_device:
+          name: Urządzenie do powiadomień
+          description: Telefon lub tablet z zainstalowaną oficjalną aplikacją Home Assistant.
+          selector:
+            device:
+              filter:
+                integration: mobile_app
+        custom_actions:
+          name: Dodatkowe akcje (opcjonalnie)
+          description: Dodatkowe akcje wykonywane w momencie zmiany salda cashback.
+          default: []
+          selector:
+            action: {}
+
+mode: queued
+max: 5
+
+trigger:
+  - trigger: state
+    entity_id: !input cashback_sensor
+
+variables:
+  min_chg: !input min_change
+  mode_sel: !input notify_mode
+
+condition:
+  - condition: template
+    value_template: >-
+      {% if trigger.from_state is none or trigger.to_state is none %}
+        false
+      {% elif trigger.from_state.state in ['unavailable', 'unknown', 'none', ''] or trigger.to_state.state in ['unavailable', 'unknown', 'none', ''] %}
+        false
+      {% elif trigger.from_state.state == trigger.to_state.state %}
+        false
+      {% else %}
+        {% set f_val = trigger.from_state.state | float(0) %}
+        {% set t_val = trigger.to_state.state | float(0) %}
+        {% set d = (t_val - f_val) | round(2) %}
+        {% set min_c = min_chg | float(0.01) %}
+        {{ (d | abs) >= min_c and (mode_sel == 'all' or (mode_sel == 'increase_only' and d > 0) or (mode_sel == 'decrease_only' and d < 0)) }}
+      {% endif %}
+
+action:
+  - alias: "Wyślij powiadomienie o zmianie cashbacku"
+    domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: >-
+      {% set f_val = trigger.from_state.state | float(0) %}
+      {% set t_val = trigger.to_state.state | float(0) %}
+      {% set d = (t_val - f_val) | round(2) %}
+      {% if d > 0 %}
+        🎉 Fonia: Nowy cashback (+{{ d | abs | round(2) }} PLN)
+      {% else %}
+        💳 Fonia: Zmiana salda cashback (-{{ d | abs | round(2) }} PLN)
+      {% endif %}
+    message: >-
+      {% set f_val = trigger.from_state.state | float(0) %}
+      {% set t_val = trigger.to_state.state | float(0) %}
+      {% set d = (t_val - f_val) | round(2) %}
+      {% if d > 0 %}
+        Na Twoje konto Fonia naliczono cashback: +{{ d | abs | round(2) }} PLN.
+      {% else %}
+        Z Twojego konta Fonia pobrano: {{ d | abs | round(2) }} PLN.
+      {% endif %}
+      Bieżący stan: {{ t_val | round(2) }} PLN.
+    data:
+      tag: "fonia-cashback-update"
+      notification_icon: "mdi:cash-fast"
+  - sequence: !input custom_actions

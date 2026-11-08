@@ -6,11 +6,13 @@
         "description": "Enter your credentials for moja.fonia.app.",
         "data": {
           "username": "Username / email",
-          "password": "Password"
+          "password": "Password",
+          "name": "Custom name (optional)"
         },
         "data_description": {
           "username": "Username used on the Fonia website.",
-          "password": "Password for your Fonia account."
+          "password": "Password for your Fonia account.",
+          "name": "Custom display name for this integration instance (defaults to email or account name)."
         }
       },
       "reauth_confirm": {
@@ -20,12 +22,22 @@
           "username": "Username / email",
           "password": "Password"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Fonia",
+        "description": "Update credentials or settings for this Fonia account.",
+        "data": {
+          "username": "Username / email",
+          "password": "Password",
+          "name": "Custom name"
+        }
       }
     },
     "error": {
       "invalid_auth": "Invalid username or password.",
       "cannot_connect": "Unable to connect to Fonia.",
-      "rate_limited": "Fonia is temporarily rate limiting requests. Try again later."
+      "rate_limited": "Fonia is temporarily rate limiting requests. Try again later.",
+      "wrong_account": "You entered credentials for a different Fonia account. Please log in with the originally configured account."
     },
     "abort": {
       "already_configured": "This Fonia account is already configured.",
@@ -95,11 +107,23 @@
     "step": {
       "init": {
         "title": "Fonia settings",
-        "description": "Adjust the refresh interval and usage synchronization.",
+        "description": "Adjust the integration name, refresh interval, usage synchronization, and enabled categories.",
         "data": {
+          "name": "Integration name / title",
           "scan_interval": "Refresh interval (minutes)",
-          "usage_sync_enabled": "Automatically synchronize data usage"
+          "usage_sync_enabled": "Automatically synchronize data usage",
+          "categories": "Enabled entity categories"
         }
+      }
+    }
+  },
+  "selector": {
+    "categories": {
+      "options": {
+        "payments": "Payments & billing",
+        "usage": "Usage statistics",
+        "history": "Transaction history",
+        "advanced": "Advanced diagnostics"
       }
     }
   }

@@ -37,6 +37,7 @@ class FoniaCoordinator(DataUpdateCoordinator[FoniaData]):
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES
         )
         self.scan_interval = timedelta(minutes=max(5, min(60, int(scan_minutes))))
+        self.is_syncing_usage = False
         super().__init__(
             hass,
             _LOGGER,
@@ -46,8 +47,14 @@ class FoniaCoordinator(DataUpdateCoordinator[FoniaData]):
 
     async def async_sync_usage(self) -> None:
         """Manually request a usage refresh without triggering a duplicate sync."""
-        await self.api.usage_sync()
-        self.last_usage_sync = datetime.now().astimezone()
+        if self.is_syncing_usage:
+            return
+        self.is_syncing_usage = True
+        try:
+            await self.api.usage_sync()
+            self.last_usage_sync = datetime.now().astimezone()
+        finally:
+            self.is_syncing_usage = False
 
     async def _async_update_data(self) -> FoniaData:
         now = datetime.now().astimezone()
@@ -57,8 +64,15 @@ class FoniaCoordinator(DataUpdateCoordinator[FoniaData]):
                 self.last_usage_sync is None
                 or now - self.last_usage_sync >= USAGE_SYNC_INTERVAL
             ):
-                await self.api.usage_sync()
-                self.last_usage_sync = now
+                try:
+                    await self.api.usage_sync()
+                    self.last_usage_sync = now
+                except FoniaAuthError:
+                    raise
+                except FoniaApiError as err:
+                    _LOGGER.warning(
+                        "Periodic Fonia usage synchronization failed: %s", err
+                    )
 
             subscriptions_response = await self.api.subscriptions()
             raw_subscriptions = subscriptions_response.get("data") or []
@@ -180,12 +194,24 @@ class FoniaCoordinator(DataUpdateCoordinator[FoniaData]):
 
 
 def _number(value: object) -> float | None:
-    if not isinstance(value, (str, int, float)) or value == "":
+    if value is None or value == "":
         return None
-    try:
+    if isinstance(value, (int, float)):
         return float(value)
-    except (OverflowError, ValueError):
-        return None
+    if isinstance(value, str):
+        sanitized = (
+            value.replace(",", ".")
+            .replace("PLN", "")
+            .replace("pln", "")
+            .replace("zł", "")
+            .replace("gr", "")
+            .strip()
+        )
+        try:
+            return float(sanitized)
+        except (OverflowError, ValueError):
+            return None
+    return None
 
 
 def _cashback_pln(value: object) -> float | None:

@@ -6,11 +6,13 @@
         "description": "Podaj dane logowania do panelu moja.fonia.app.",
         "data": {
           "username": "Login / e-mail",
-          "password": "Hasło"
+          "password": "Hasło",
+          "name": "Własna nazwa (opcjonalnie)"
         },
         "data_description": {
           "username": "Login używany w panelu Fonia.",
-          "password": "Hasło do konta Fonia."
+          "password": "Hasło do konta Fonia.",
+          "name": "Własna nazwa dla tej integracji (np. zamiast domyślnego user_... lub e-maila)."
         }
       },
       "reauth_confirm": {
@@ -20,12 +22,22 @@
           "username": "Login / e-mail",
           "password": "Hasło"
         }
+      },
+      "reconfigure": {
+        "title": "Zmień konfigurację Fonia",
+        "description": "Zaktualizuj dane logowania lub ustawienia dla tego konta Fonia.",
+        "data": {
+          "username": "Login / e-mail",
+          "password": "Hasło",
+          "name": "Własna nazwa"
+        }
       }
     },
     "error": {
       "invalid_auth": "Nieprawidłowy login lub hasło.",
       "cannot_connect": "Nie można połączyć się z Fonia.",
-      "rate_limited": "Fonia chwilowo ogranicza liczbę żądań. Spróbuj ponownie później."
+      "rate_limited": "Fonia chwilowo ogranicza liczbę żądań. Spróbuj ponownie później.",
+      "wrong_account": "Podano dane innego konta Fonia. Zaloguj się na pierwotnie skonfigurowane konto."
     },
     "abort": {
       "already_configured": "To konto Fonia jest już skonfigurowane.",
@@ -95,11 +107,23 @@
     "step": {
       "init": {
         "title": "Ustawienia Fonia",
-        "description": "Dostosuj częstotliwość odświeżania i synchronizację zużycia.",
+        "description": "Dostosuj nazwę integracji, częstotliwość odświeżania, synchronizację zużycia i aktywne kategorie encji.",
         "data": {
+          "name": "Nazwa integracji / konta",
           "scan_interval": "Interwał odświeżania (minuty)",
-          "usage_sync_enabled": "Automatycznie synchronizuj zużycie danych"
+          "usage_sync_enabled": "Automatycznie synchronizuj zużycie danych",
+          "categories": "Włączone kategorie encji"
         }
+      }
+    }
+  },
+  "selector": {
+    "categories": {
+      "options": {
+        "payments": "Płatności i rozliczenia",
+        "usage": "Statystyki zużycia",
+        "history": "Historia transakcji",
+        "advanced": "Zaawansowana diagnostyka"
       }
     }
   }

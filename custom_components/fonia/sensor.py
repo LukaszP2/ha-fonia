@@ -14,12 +14,28 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfInformation
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+try:
+    from homeassistant.helpers.device_registry import ChildDeviceInfo
+
+    _CHILD_DEVICE_SUPPORTED = True
+except ImportError:  # HA < 2026.x
+    _CHILD_DEVICE_SUPPORTED = False
+
+from .const import (
+    ALL_CATEGORIES,
+    CATEGORY_ADVANCED,
+    CATEGORY_CORE,
+    CATEGORY_HISTORY,
+    CATEGORY_PAYMENTS,
+    CATEGORY_USAGE,
+    CONF_CATEGORIES,
+    DOMAIN,
+)
 from .coordinator import FoniaCoordinator
 from .models import FoniaData, Sim, Subscription
 
@@ -34,6 +50,7 @@ class FoniaSensorDescription(SensorEntityDescription):
     scope: SensorScope = "subscription"
     enabled_by_default: bool = True
     entity_category: EntityCategory | None = None
+    category: str = CATEGORY_CORE
 
 
 SENSORS: tuple[FoniaSensorDescription, ...] = (
@@ -41,20 +58,22 @@ SENSORS: tuple[FoniaSensorDescription, ...] = (
         key="status",
         translation_key="status",
         value_fn=lambda _, sub, __: sub.status if sub else None,
+        category=CATEGORY_CORE,
     ),
     FoniaSensorDescription(
         key="next_payment",
         translation_key="next_payment",
         device_class=SensorDeviceClass.DATE,
         value_fn=lambda _, sub, __: sub.next_payment if sub else None,
+        category=CATEGORY_PAYMENTS,
     ),
     FoniaSensorDescription(
         key="renewal_price",
         translation_key="renewal_price",
         device_class=SensorDeviceClass.MONETARY,
         native_unit_of_measurement="PLN",
-        state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda _, sub, __: sub.renewal_price if sub else None,
+        category=CATEGORY_PAYMENTS,
     ),
     FoniaSensorDescription(
         key="data_remaining",
@@ -64,6 +83,7 @@ SENSORS: tuple[FoniaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda _, __, sim: sim.data_remaining if sim else None,
         scope="sim",
+        category=CATEGORY_CORE,
     ),
     FoniaSensorDescription(
         key="data_total",
@@ -75,6 +95,7 @@ SENSORS: tuple[FoniaSensorDescription, ...] = (
         scope="sim",
         enabled_by_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        category=CATEGORY_USAGE,
     ),
     FoniaSensorDescription(
         key="data_used_percentage",
@@ -83,6 +104,7 @@ SENSORS: tuple[FoniaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda _, __, sim: _used_percentage(sim),
         scope="sim",
+        category=CATEGORY_USAGE,
     ),
     FoniaSensorDescription(
         key="order_count",
@@ -92,6 +114,7 @@ SENSORS: tuple[FoniaSensorDescription, ...] = (
         ),
         enabled_by_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        category=CATEGORY_PAYMENTS,
     ),
     FoniaSensorDescription(
         key="roaming_data_remaining",
@@ -101,6 +124,7 @@ SENSORS: tuple[FoniaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda _, __, sim: sim.roaming_data_remaining if sim else None,
         scope="sim",
+        category=CATEGORY_USAGE,
     ),
     FoniaSensorDescription(
         key="roaming_data_total",
@@ -112,6 +136,7 @@ SENSORS: tuple[FoniaSensorDescription, ...] = (
         scope="sim",
         enabled_by_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        category=CATEGORY_USAGE,
     ),
     FoniaSensorDescription(
         key="roaming_data_used_percentage",
@@ -120,6 +145,7 @@ SENSORS: tuple[FoniaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda _, __, sim: _roaming_used_percentage(sim),
         scope="sim",
+        category=CATEGORY_USAGE,
     ),
 )
 
@@ -129,18 +155,18 @@ ACCOUNT_SENSORS: tuple[FoniaSensorDescription, ...] = (
         translation_key="cashback_balance",
         native_unit_of_measurement="PLN",
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data, _, __: data.cashback_balance,
         scope="account",
+        category=CATEGORY_CORE,
     ),
     FoniaSensorDescription(
         key="cashback_spendable",
         translation_key="cashback_spendable",
         native_unit_of_measurement="PLN",
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data, _, __: data.cashback_spendable,
         scope="account",
+        category=CATEGORY_CORE,
     ),
     FoniaSensorDescription(
         key="cashback_transaction_count",
@@ -149,6 +175,7 @@ ACCOUNT_SENSORS: tuple[FoniaSensorDescription, ...] = (
         scope="account",
         enabled_by_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        category=CATEGORY_HISTORY,
     ),
     FoniaSensorDescription(
         key="site_alert_count",
@@ -157,6 +184,7 @@ ACCOUNT_SENSORS: tuple[FoniaSensorDescription, ...] = (
         scope="account",
         enabled_by_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        category=CATEGORY_ADVANCED,
     ),
 )
 
@@ -176,23 +204,31 @@ class FoniaSensor(CoordinatorEntity[FoniaCoordinator], SensorEntity):
     def __init__(
         self,
         coordinator: FoniaCoordinator,
+        entry: ConfigEntry,
         description: FoniaSensorDescription,
         subscription: Subscription | None = None,
         sim: Sim | None = None,
         parent_device_id: str | None = None,
     ) -> None:
         super().__init__(coordinator)
+        self.entry = entry
         self.entity_description = description
         self._subscription_id = subscription.uuid if subscription else None
         self._sim_id = sim.uuid if sim else None
-        # All phone-specific entities use the SIM UUID. This keeps each
-        # phone's subscription and usage data together on one HA device.
-        scope_id = self._sim_id or self._subscription_id or "account"
+        scope_id = (
+            f"sim_{self._sim_id}"
+            if self._sim_id
+            else (
+                f"sub_{self._subscription_id}"
+                if self._subscription_id
+                else f"account_{entry.entry_id}"
+            )
+        )
         self._attr_unique_id = f"{scope_id}_{description.key}"
         self._attr_entity_category = description.entity_category
         self._attr_entity_registry_enabled_default = description.enabled_by_default
         self._attr_device_info = _device_info(
-            subscription, sim, description.scope, parent_device_id
+            entry, subscription, sim, description.scope, parent_device_id
         )
 
     def _items(self) -> tuple[Subscription | None, Sim | None]:
@@ -214,6 +250,17 @@ class FoniaSensor(CoordinatorEntity[FoniaCoordinator], SensorEntity):
             else None
         )
         return subscription, sim
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        subscription, sim = self._items()
+        if self.entity_description.scope == "sim":
+            return sim is not None
+        if self.entity_description.scope == "subscription":
+            return subscription is not None
+        return True
 
     @property
     def native_value(self) -> Any:
@@ -238,6 +285,11 @@ class FoniaSensor(CoordinatorEntity[FoniaCoordinator], SensorEntity):
                 }
             return None
 
+        # Only expose metadata attributes on the primary status sensor to avoid
+        # recorder bloat and unnecessary duplication on every sensor.
+        if self.entity_description.key != "status":
+            return None
+
         attributes: dict[str, Any] = {
             "public_reference": subscription.public_reference,
             "operator": subscription.operator or (sim.operator if sim else None),
@@ -250,63 +302,98 @@ class FoniaSensor(CoordinatorEntity[FoniaCoordinator], SensorEntity):
             attributes.update(
                 phone_number=sim.phone_number,
                 sim_status=sim.status,
-                data_total_gb=sim.data_total,
-                roaming_data_remaining_gb=sim.roaming_data_remaining,
-                roaming_data_total_gb=sim.roaming_data_total,
-                packages=sim.packages,
-                agreement_number=sim.agreement_number,
-                iccid=sim.iccid,
-                crm_reference=sim.crm_reference,
             )
-        payment_method = self.coordinator.data.payment_methods.get(subscription.uuid)
-        if payment_method:
-            safe = {
-                key: payment_method.get(key)
-                for key in ("type", "brand", "last4", "expiry_month", "expiry_year")
-                if payment_method.get(key) is not None
-            }
-            attributes["payment_method"] = safe
         orders = self.coordinator.data.orders.get(subscription.uuid)
         if orders:
             attributes["latest_order"] = _latest_order(orders)
         return {key: value for key, value in attributes.items() if value is not None}
 
 
-def _device_info(
-    subscription: Subscription | None,
-    sim: Sim | None,
-    scope: SensorScope,
-    parent_device_id: str | None = None,
-) -> DeviceInfo | ChildDeviceInfo:
-    if scope == "account":
-        return DeviceInfo(
-            identifiers={(DOMAIN, "account")},
-            name="Fonia",
-            manufacturer="Fonia",
-            model="Konto",
-        )
-    if sim:
-        # A phone/SIM is a logical child of the Fonia account, not a separate
-        # top-level device. Home Assistant 2026.9+ models this with
-        # ChildDeviceInfo.parent_device_id (not via_device_id).
-        if parent_device_id is None:
-            raise ValueError(
-                "Fonia account device must be registered before SIM devices"
-            )
-        return ChildDeviceInfo(
-            identifiers={(DOMAIN, f"sim_{sim.uuid}")},
-            name=f"Fonia · {sim.phone_number}" if sim.phone_number else "Fonia · SIM",
-            parent_device_id=parent_device_id,
-        )
-    # Subscription-only entities are not exposed as separate devices. In the
-    # user-facing device model, subscriptions are an internal API concept and
-    # their useful values are represented on each phone's device instead.
+def _account_device_info(entry: ConfigEntry) -> DeviceInfo:
+    """DeviceInfo for the top-level account device."""
     return DeviceInfo(
-        identifiers={(DOMAIN, "account")},
+        identifiers={(DOMAIN, f"account_{entry.entry_id}")},
         name="Fonia",
         manufacturer="Fonia",
         model="Konto",
     )
+
+
+def _sim_device_info(
+    entry: ConfigEntry,
+    sim: Sim,
+    parent_device_id: str | None = None,
+) -> DeviceInfo:
+    """DeviceInfo for a SIM / phone-number child device.
+
+    Uses ChildDeviceInfo (HA ≥ 2026.x) when available so the phone number
+    is modeled as a component part of the account device.
+    Falls back to via_device on older HA versions.
+    """
+    name = f"Fonia · {sim.phone_number}" if sim.phone_number else "Fonia · SIM"
+    identifiers: set[tuple[str, str]] = {(DOMAIN, f"sim_{sim.uuid}")}
+
+    if _CHILD_DEVICE_SUPPORTED and parent_device_id:
+        return ChildDeviceInfo(  # type: ignore[return-value]
+            identifiers=identifiers,
+            name=name,
+            parent_device_id=parent_device_id,
+        )
+
+    # Fallback for HA < 2026.x — via_device is the closest available relation.
+    return DeviceInfo(
+        identifiers=identifiers,
+        name=name,
+        manufacturer="Fonia",
+        model="Karta SIM",
+        via_device=(DOMAIN, f"account_{entry.entry_id}"),
+    )
+
+
+def _subscription_device_info(
+    entry: ConfigEntry,
+    subscription: Subscription,
+    parent_device_id: str | None = None,
+) -> DeviceInfo:
+    """DeviceInfo for a standalone subscription child device (no SIM card)."""
+    name = (
+        f"Fonia · {subscription.public_reference}"
+        if subscription.public_reference
+        else "Fonia · Subskrypcja"
+    )
+    identifiers: set[tuple[str, str]] = {(DOMAIN, f"sub_{subscription.uuid}")}
+
+    if _CHILD_DEVICE_SUPPORTED and parent_device_id:
+        return ChildDeviceInfo(  # type: ignore[return-value]
+            identifiers=identifiers,
+            name=name,
+            parent_device_id=parent_device_id,
+        )
+
+    # Fallback for HA < 2026.x — via_device is the closest available relation.
+    return DeviceInfo(
+        identifiers=identifiers,
+        name=name,
+        manufacturer="Fonia",
+        model="Subskrypcja",
+        via_device=(DOMAIN, f"account_{entry.entry_id}"),
+    )
+
+
+def _device_info(
+    entry: ConfigEntry,
+    subscription: Subscription | None,
+    sim: Sim | None,
+    scope: SensorScope,
+    parent_device_id: str | None = None,
+) -> DeviceInfo:
+    if scope == "account":
+        return _account_device_info(entry)
+    if sim is not None:
+        return _sim_device_info(entry, sim, parent_device_id)
+    if subscription is not None:
+        return _subscription_device_info(entry, subscription, parent_device_id)
+    return _account_device_info(entry)
 
 
 def _used_percentage(sim: Sim | None) -> float | None:
@@ -352,7 +439,7 @@ def _latest_order(orders: list[dict[str, Any]]) -> dict[str, Any]:
             item.get("created_at") or item.get("date") or item.get("id") or ""
         ),
     )
-    return {
+    result = {
         key: latest.get(key)
         for key in (
             "id",
@@ -360,120 +447,91 @@ def _latest_order(orders: list[dict[str, Any]]) -> dict[str, Any]:
             "status",
             "created_at",
             "date",
-            "amount",
-            "total",
             "type",
         )
         if latest.get(key) is not None
     }
+    for amount_key in ("amount", "total", "amount_pln"):
+        if amount_key in latest and latest[amount_key] is not None:
+            raw_val = latest[amount_key]
+            try:
+                result[amount_key] = round(float(raw_val), 2)
+            except (TypeError, ValueError):
+                result[amount_key] = raw_val
+    return result
 
 
 def _build_entities(
     coordinator: FoniaCoordinator,
+    entry: ConfigEntry,
     parent_device_id: str,
 ) -> list[FoniaSensor]:
     """Build account entities and group subscription data under each phone."""
-    entities = [
-        FoniaSensor(coordinator, description) for description in ACCOUNT_SENSORS
+    enabled_categories = set(entry.options.get(CONF_CATEGORIES, ALL_CATEGORIES))
+    enabled_categories.add(CATEGORY_CORE)
+
+    entities: list[FoniaSensor] = [
+        FoniaSensor(coordinator, entry, description)
+        for description in ACCOUNT_SENSORS
+        if description.category in enabled_categories
     ]
     for subscription in coordinator.data.subscriptions:
-        # Subscription values are presented on each associated phone device.
-        for sim in subscription.sims:
-            common = {
-                "subscription": subscription,
-                "sim": sim,
-                "parent_device_id": parent_device_id,
-            }
-            if subscription.status is not None:
-                entities.append(
-                    FoniaSensor(coordinator, SENSORS_BY_KEY["status"], **common)
-                )
-            if subscription.next_payment is not None:
-                entities.append(
-                    FoniaSensor(coordinator, SENSORS_BY_KEY["next_payment"], **common)
-                )
-            if subscription.renewal_price is not None:
-                entities.append(
-                    FoniaSensor(coordinator, SENSORS_BY_KEY["renewal_price"], **common)
-                )
-            if coordinator.data.orders.get(subscription.uuid):
-                entities.append(
-                    FoniaSensor(coordinator, SENSORS_BY_KEY["order_count"], **common)
-                )
-            if sim.data_remaining is not None:
-                entities.append(
-                    FoniaSensor(coordinator, SENSORS_BY_KEY["data_remaining"], **common)
-                )
-            if sim.data_total is not None:
-                entities.append(
-                    FoniaSensor(coordinator, SENSORS_BY_KEY["data_total"], **common)
-                )
-            if sim.data_total is not None and sim.data_remaining is not None:
-                entities.append(
-                    FoniaSensor(
-                        coordinator, SENSORS_BY_KEY["data_used_percentage"], **common
+        if subscription.sims:
+            for sim in subscription.sims:
+                common = {
+                    "subscription": subscription,
+                    "sim": sim,
+                    "parent_device_id": parent_device_id,
+                }
+                for sensor_desc in SENSORS:
+                    if sensor_desc.category in enabled_categories:
+                        entities.append(
+                            FoniaSensor(coordinator, entry, sensor_desc, **common)
+                        )
+        else:
+            for sensor_desc in SENSORS:
+                if (
+                    sensor_desc.scope == "subscription"
+                    and sensor_desc.category in enabled_categories
+                ):
+                    entities.append(
+                        FoniaSensor(
+                            coordinator,
+                            entry,
+                            sensor_desc,
+                            subscription=subscription,
+                            sim=None,
+                            parent_device_id=parent_device_id,
+                        )
                     )
-                )
-            if sim.roaming_data_remaining is not None:
-                entities.append(
-                    FoniaSensor(
-                        coordinator, SENSORS_BY_KEY["roaming_data_remaining"], **common
-                    )
-                )
-            if sim.roaming_data_total is not None:
-                entities.append(
-                    FoniaSensor(
-                        coordinator, SENSORS_BY_KEY["roaming_data_total"], **common
-                    )
-                )
-            if (
-                sim.roaming_data_total is not None
-                and sim.roaming_data_remaining is not None
-            ):
-                entities.append(
-                    FoniaSensor(
-                        coordinator,
-                        SENSORS_BY_KEY["roaming_data_used_percentage"],
-                        **common,
-                    )
-                )
     return entities
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry[FoniaCoordinator],
-    async_add_entities: AddConfigEntryEntitiesCallback,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensors and discover new subscriptions/SIMs during polling."""
     coordinator: FoniaCoordinator = entry.runtime_data
     known_unique_ids: set[str] = set()
+
+    # Ensure the account (parent) device exists in the registry before any
+    # child SIM device is registered; ChildDeviceInfo requires the parent's
+    # internal device-registry ID, not its identifiers tuple.
     device_registry = dr.async_get(hass)
+    account_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"account_{entry.entry_id}")},
+        name="Fonia",
+        manufacturer="Fonia",
+        model="Konto",
+    )
 
     def add_missing_entities() -> None:
-        # The account is the only parent-level device. Each phone is a direct,
-        # standalone device; subscription records stay internal to the API model.
-        account_device = device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            identifiers={(DOMAIN, "account")},
-            name="Fonia",
-            manufacturer="Fonia",
-            model="Konto",
-        )
-        for subscription in coordinator.data.subscriptions:
-            for sim in subscription.sims:
-                device_registry.async_get_or_create_child(
-                    config_entry_id=entry.entry_id,
-                    identifiers={(DOMAIN, f"sim_{sim.uuid}")},
-                    name=f"Fonia · {sim.phone_number}"
-                    if sim.phone_number
-                    else "Fonia · SIM",
-                    parent_device_id=account_device.id,
-                )
-
         new_entities = [
             entity
-            for entity in _build_entities(coordinator, account_device.id)
+            for entity in _build_entities(coordinator, entry, account_device.id)
             if entity.unique_id not in known_unique_ids
         ]
         if new_entities:

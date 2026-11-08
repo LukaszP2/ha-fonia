@@ -17,8 +17,22 @@ def _date(value: Any) -> date | None:
 def _float(value: Any) -> float | None:
     if value is None or value == "":
         return None
-    try:
+    if isinstance(value, (int, float)):
         return float(value)
+    sanitized = (
+        str(value)
+        .replace(",", ".")
+        .replace("GB", "")
+        .replace("gb", "")
+        .replace("MB", "")
+        .replace("mb", "")
+        .replace("PLN", "")
+        .replace("pln", "")
+        .replace("zł", "")
+        .strip()
+    )
+    try:
+        return float(sanitized)
     except (TypeError, ValueError):
         return None
 
@@ -76,7 +90,7 @@ def _roaming_package(packages: Any) -> dict[str, Any] | None:
             continue
         label = str(package.get("label") or "").strip().lower()
         key = str(package.get("key") or "").strip().lower()
-        if label == "roaming" or "roaming" in key:
+        if "roaming" in label or "roaming" in key:
             return package
     return None
 

@@ -1,0 +1,109 @@
+blueprint:
+  name: "Fonia — Alert o wyczerpywaniu roamingu (UE)"
+  description: >-
+    Wysyła ostrzeżenie o wysokim priorytecie, gdy limit transferu danych
+    w roamingu na karcie SIM Fonia spadnie poniżej zdefiniowanego progu.
+  domain: automation
+  homeassistant:
+    min_version: "2024.6.0"
+  input:
+    entities_section:
+      name: Sensory Fonia
+      icon: mdi:airplane
+      description: Wybierz sensor roamingu Fonia.
+      input:
+        roaming_remaining_sensor:
+          name: Sensor pozostałego roamingu
+          description: Sensor raportujący pozostały transfer w roamingu w GB (np. sensor.fonia_*_roaming_data_remaining).
+          selector:
+            entity:
+              filter:
+                - integration: fonia
+                  domain: sensor
+                  device_class: data_size
+        roaming_total_sensor:
+          name: Sensor łącznego pakietu roamingu (opcjonalnie)
+          description: Sensor całkowitego pakietu roamingu w GB (np. sensor.fonia_*_roaming_data_total).
+          default: ""
+          selector:
+            entity:
+              filter:
+                - integration: fonia
+                  domain: sensor
+                  device_class: data_size
+    thresholds_section:
+      name: Progi ostrzegawcze
+      icon: mdi:gauge-alert
+      description: Konfiguracja poziomu danych roamingu wyzwalającego alert.
+      input:
+        threshold_gb:
+          name: Próg roamingu (GB)
+          description: Powiadomienie zostanie wyzwolone, gdy transfer roamingu spadnie poniżej tej wartości.
+          default: 0.5
+          selector:
+            number:
+              min: 0.05
+              max: 20.0
+              step: 0.05
+              unit_of_measurement: "GB"
+              mode: box
+    notifications_section:
+      name: Powiadomienia i akcje
+      icon: mdi:bell-ring
+      description: Odbiorca powiadomień oraz ewentualne dodatkowe akcje.
+      input:
+        notify_device:
+          name: Urządzenie do powiadomień
+          description: Telefon lub tablet z zainstalowaną oficjalną aplikacją Home Assistant.
+          selector:
+            device:
+              filter:
+                integration: mobile_app
+        custom_actions:
+          name: Dodatkowe akcje (opcjonalnie)
+          description: Dodatkowe akcje do wykonania w momencie wyzwolenia alertu.
+          default: []
+          selector:
+            action: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - trigger: numeric_state
+    entity_id: !input roaming_remaining_sensor
+    below: !input threshold_gb
+
+variables:
+  total_sensor: !input roaming_total_sensor
+
+condition:
+  - condition: template
+    value_template: >-
+      {{ trigger.to_state is not none
+         and trigger.to_state.state not in ['unavailable', 'unknown']
+         and trigger.from_state is not none
+         and trigger.from_state.state not in ['unavailable', 'unknown'] }}
+
+action:
+  - alias: "Wyślij alert roamingowy na aplikację mobilną"
+    domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: "🌍 Fonia: Kończy się pakiet roamingu!"
+    message: >-
+      {% set remaining = trigger.to_state.state | float(0) | round(2) %}
+      {% if total_sensor != "" and states(total_sensor) not in ['unavailable', 'unknown'] %}
+        {% set total = states(total_sensor) | float(0) | round(2) %}
+        {% set pct = ((remaining / total) * 100) | round(1) if total > 0 else 0 %}
+        Uwaga! Pozostało tylko {{ remaining }} GB z {{ total }} GB roamingu UE ({{ pct }}%). Po wyczerpaniu mogą być naliczane dodatkowe opłaty.
+      {% else %}
+        Uwaga! Pozostało tylko {{ remaining }} GB danych w roamingu Fonia. Po wyczerpaniu mogą być naliczane dodatkowe opłaty.
+      {% endif %}
+    data:
+      tag: "fonia-roaming-low-{{ trigger.entity_id }}"
+      notification_icon: "mdi:airplane-alert"
+      channel: "Alert"
+      priority: "high"
+      ttl: 0
+  - sequence: !input custom_actions

@@ -18,9 +18,7 @@ rules:
   entity_translations: done
   exception_translations: done
   icon_translations: done
-  reconfiguration_flow:
-    status: todo
-    comment: "There are no non-credential setup fields to reconfigure; credentials use reauthentication and runtime settings use the options flow."
+  reconfiguration_flow: done
   test_coverage:
     status: todo
     comment: "Full Home Assistant test suite is being expanded before a quality-scale claim."
