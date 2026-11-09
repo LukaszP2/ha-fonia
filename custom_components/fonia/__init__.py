@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import FoniaApi, FoniaApiError, FoniaAuthError
@@ -20,6 +21,8 @@ _LOGGER = logging.getLogger(__name__)
 
 FoniaConfigEntry: TypeAlias = ConfigEntry[FoniaCoordinator]
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
 
 def _sync_blueprints(source_dir: Path, target_dir: Path) -> bool:
     """Synchronize blueprints from the component folder to HA blueprints folder."""
@@ -28,7 +31,7 @@ def _sync_blueprints(source_dir: Path, target_dir: Path) -> bool:
         updated = False
         for src_file in source_dir.glob("*.yaml"):
             dst_file = target_dir / src_file.name
-            if not dst_file.exists() or dst_file.read_bytes() != src_file.read_bytes():
+            if not dst_file.exists():
                 shutil.copy2(src_file, dst_file)
                 updated = True
         return updated
@@ -38,7 +41,7 @@ def _sync_blueprints(source_dir: Path, target_dir: Path) -> bool:
 
 
 async def _async_deploy_blueprints(hass: HomeAssistant) -> None:
-    """Deploy blueprints if not already present or if updated."""
+    """Deploy blueprints if not already present."""
     source_dir = Path(__file__).parent / "blueprints"
     if not source_dir.is_dir():
         return

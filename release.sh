@@ -44,7 +44,7 @@ if [ -d "${REPO_DIR}/blueprints/automation/fonia" ]; then
 fi
 
 echo "Running code checks and test suite..."
-ruff check . --fix
+ruff check .
 pytest -q
 
 git -C "${REPO_DIR}" add .

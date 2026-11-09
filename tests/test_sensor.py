@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+import pytest
 from homeassistant.components.sensor import SensorDeviceClass
 
 from custom_components.fonia.const import (
@@ -18,6 +19,7 @@ from custom_components.fonia.sensor import (
     _latest_order,
     _roaming_used_percentage,
     _used_percentage,
+    async_setup_entry,
 )
 
 
@@ -365,3 +367,101 @@ def test_latest_order_normalization() -> None:
     assert latest["amount"] == 49.99
     assert latest["amount_pln"] == 50.0
     assert _latest_order([]) == {}
+
+
+@pytest.mark.asyncio
+async def test_new_sim_added_dynamically() -> None:
+    sim1 = Sim(
+        uuid="sim-1",
+        phone_number="+48111111111",
+        operator="Fonia",
+        status="active",
+        tariff="Smart",
+        data_remaining=10.0,
+        data_total=20.0,
+    )
+    sub = Subscription(
+        uuid="sub-1",
+        public_reference="REF-1",
+        status="active",
+        operator="Fonia",
+        billing_period="m",
+        renewal_price=29.0,
+        start_date=None,
+        next_payment=None,
+        tariff="Smart",
+        billing_mode="prepaid",
+        payment_mode="card",
+        sims=[sim1],
+    )
+    coordinator = MagicMock()
+    coordinator.data = FoniaData(
+        subscriptions=[sub],
+        cashback_balance=100.0,
+        cashback_spendable=50.0,
+    )
+
+    listeners = []
+
+    def add_listener(callback):
+        listeners.append(callback)
+        return lambda: listeners.remove(callback)
+
+    coordinator.async_add_listener = MagicMock(side_effect=add_listener)
+
+    entry = MagicMock()
+    entry.entry_id = "test_entry"
+    entry.runtime_data = coordinator
+    entry.options = {}
+    entry.async_on_unload = MagicMock()
+
+    hass = MagicMock()
+    async_add_entities = MagicMock()
+
+    # Initial setup
+    await async_setup_entry(hass, entry, async_add_entities)
+
+    # Verify initial setup registered entities and listener
+    assert async_add_entities.call_count == 1
+    coordinator.async_add_listener.assert_called_once()
+    entry.async_on_unload.assert_called_once()
+    initial_entities = async_add_entities.call_args[0][0]
+    initial_ids = {e.unique_id for e in initial_entities}
+    assert any("sim-1" in uid for uid in initial_ids)
+    assert any("account_test_entry" in uid for uid in initial_ids)
+    assert not any("sim-2" in uid for uid in initial_ids)
+
+    # Simulate adding a new SIM card dynamically to the account/subscription
+    sim2 = Sim(
+        uuid="sim-2",
+        phone_number="+48222222222",
+        operator="Fonia",
+        status="active",
+        tariff="Smart",
+        data_remaining=15.0,
+        data_total=30.0,
+    )
+    sub.sims.append(sim2)
+
+    # Notify coordinator listeners (simulating coordinator refresh)
+    for listener in listeners:
+        listener()
+
+    # Verify that only the new SIM entities are added without re-adding existing ones
+    assert async_add_entities.call_count == 2
+    new_entities = async_add_entities.call_args[0][0]
+    new_ids = {e.unique_id for e in new_entities}
+
+    # All new entities belong to the newly added SIM
+    assert all("sim-2" in uid for uid in new_ids)
+    assert "sim_sim-2_status" in new_ids
+    assert "sim_sim-2_data_remaining" in new_ids
+
+    # None of the initial entities are re-added
+    assert not any(uid in initial_ids for uid in new_ids)
+
+    # Trigger listener again with no data changes -> no further entities added
+    for listener in listeners:
+        listener()
+    assert async_add_entities.call_count == 2
+

@@ -210,6 +210,14 @@ if "homeassistant" not in sys.modules:
     sys.modules["homeassistant.helpers.aiohttp_client"] = aiohttp_client
     helpers.aiohttp_client = aiohttp_client
 
+    # config_validation
+    cv = types.ModuleType("homeassistant.helpers.config_validation")
+    cv.config_entry_only_config_schema = MagicMock(side_effect=lambda domain: MagicMock())
+    cv.empty_config_schema = MagicMock(side_effect=lambda domain: MagicMock())
+    cv.platform_only_config_schema = MagicMock(side_effect=lambda domain: MagicMock())
+    sys.modules["homeassistant.helpers.config_validation"] = cv
+    helpers.config_validation = cv
+
     # selector
     selector = types.ModuleType("homeassistant.helpers.selector")
 

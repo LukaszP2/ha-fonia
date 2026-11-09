@@ -128,7 +128,15 @@ def test_sync_blueprints(tmp_path) -> None:
     # Second sync without changes returns False
     assert _sync_blueprints(src_dir, dst_dir) is False
 
-    # Sync updates when source changes
-    (src_dir / "bp1.yaml").write_text("blueprint 1 updated")
+    # Sync does not overwrite existing/modified target files (AUD-002)
+    (dst_dir / "bp1.yaml").write_text("user modified blueprint")
+    (src_dir / "bp1.yaml").write_text("blueprint 1 updated upstream")
+    assert _sync_blueprints(src_dir, dst_dir) is False
+    assert (dst_dir / "bp1.yaml").read_text() == "user modified blueprint"
+
+    # Sync copies new blueprints added in new versions
+    (src_dir / "bp2.yaml").write_text("blueprint 2 content")
     assert _sync_blueprints(src_dir, dst_dir) is True
-    assert (dst_dir / "bp1.yaml").read_text() == "blueprint 1 updated"
+    assert (dst_dir / "bp2.yaml").exists()
+    assert (dst_dir / "bp2.yaml").read_text() == "blueprint 2 content"
+    assert (dst_dir / "bp1.yaml").read_text() == "user modified blueprint"

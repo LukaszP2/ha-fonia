@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.fonia.api import (
@@ -12,7 +13,6 @@ from custom_components.fonia.const import (
     CATEGORY_PAYMENTS,
     CATEGORY_USAGE,
     CONF_CATEGORIES,
-    CONF_NAME,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USAGE_SYNC,
