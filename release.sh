@@ -43,6 +43,10 @@ if [ -d "${REPO_DIR}/blueprints/automation/fonia" ]; then
     done
 fi
 
+echo "Running code checks and test suite..."
+ruff check . --fix
+pytest -q
+
 git -C "${REPO_DIR}" add .
 git -C "${REPO_DIR}" commit -m "Bump version to ${NEW_VER}: ${MSG}" || true
 git -C "${REPO_DIR}" tag -a "v${NEW_VER}" -m "${MSG}"

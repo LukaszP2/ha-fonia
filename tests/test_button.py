@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from homeassistant.helpers.entity import EntityCategory
 
 from custom_components.fonia.api import FoniaAuthError
