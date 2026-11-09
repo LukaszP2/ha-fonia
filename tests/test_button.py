@@ -2,6 +2,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from homeassistant.helpers.entity import EntityCategory
+
 from custom_components.fonia.api import FoniaAuthError
 from custom_components.fonia.button import FoniaUsageSyncButton
 from custom_components.fonia.const import DOMAIN
@@ -20,6 +22,7 @@ async def test_button_press_success() -> None:
     button = FoniaUsageSyncButton(coordinator, entry)
     assert button.unique_id == "test_entry_id_usage_sync"
     assert button.device_info["identifiers"] == {(DOMAIN, "account_test_entry_id")}
+    assert button.entity_category == EntityCategory.DIAGNOSTIC
 
     await button.async_press()
 

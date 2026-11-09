@@ -46,6 +46,12 @@ if "homeassistant" not in sys.modules:
         BUTTON = "button"
 
     const.Platform = Platform
+
+    class EntityCategory:
+        CONFIG = "config"
+        DIAGNOSTIC = "diagnostic"
+
+    const.EntityCategory = EntityCategory
     sys.modules["homeassistant.const"] = const
     ha.const = const
 

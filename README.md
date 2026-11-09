@@ -119,7 +119,7 @@ Sends an immediate notification whenever your cashback balance changes, reportin
 | **Sensor** | `cashback_spendable` | Available / spendable cashback (PLN) | Core (Account) |
 | **Sensor** | `cashback_transaction_count` | Total cashback transactions *(disabled by default)* | History / Diagnostic (Account) |
 | **Sensor** | `site_alert_count` | Number of operator announcements *(disabled by default)*| Advanced / Diagnostic (Account) |
-| **Button** | `usage_sync` | Triggers immediate usage synchronization from Fonia | Button (Account) |
+| **Button** | `usage_sync` | Triggers immediate usage synchronization from Fonia | Diagnostic (Account) |
 
 ---
 
@@ -240,7 +240,7 @@ Wysyła natychmiastowe powiadomienie o każdej zmianie salda cashback (nowy zwro
 | **Sensor** | `cashback_spendable` | Dostępne środki cashback do wypłaty (PLN) | Główne (Konto Fonia) |
 | **Sensor** | `cashback_transaction_count` | Liczba transakcji cashback *(domyślnie wyłączony)* | Historia / Diagnostyka (Konto Fonia) |
 | **Sensor** | `site_alert_count` | Liczba komunikatów operatora *(domyślnie wyłączony)* | Zaawansowane / Diagnostyka (Konto Fonia) |
-| **Przycisk**| `usage_sync` | Wymuszenie synchronizacji zużycia danych z Fonia | Przycisk (Konto Fonia) |
+| **Przycisk**| `usage_sync` | Wymuszenie synchronizacji zużycia danych z Fonia | Diagnostyka (Konto Fonia) |
 
 ---
 
